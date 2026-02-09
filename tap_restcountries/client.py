@@ -55,4 +55,6 @@ class RestCountriesStream(RESTStream):
         selected_fields = [k[1] for k,v in self.metadata.items() if v.selected and len(k) == 2]
         if len(selected_fields) > 10:
             raise ValueError("The API has a maximum of 10 fields per request.")
+        elif len(selected_fields) == 0:
+            selected_fields = ["cca3"]
         return {"fields": ",".join(selected_fields)}
