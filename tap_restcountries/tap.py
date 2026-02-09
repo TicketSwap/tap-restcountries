@@ -21,7 +21,14 @@ class TapRestCountries(Tap):
 
     name = "tap-restcountries"
 
-    config_jsonschema = {}
+    config_jsonschema = th.PropertiesList(
+        th.Property(
+            "fields",
+            th.ArrayType(th.StringType),
+            required=True,
+            description="List of fields to include in the API response (max 10).",
+        ),
+    ).to_dict()
 
     @override
     def discover_streams(self) -> list[streams.RestCountriesStream]:

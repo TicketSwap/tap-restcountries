@@ -18,7 +18,16 @@ plugins:
     - structured-logging
 
     select:
-    - countries.cca3
+    - countries.*
+
+    config:
+      fields:
+      - name
+      - cca2
+      - cca3
+      - capital
+      - region
+
   loaders:
   - name: target-jsonl
     variant: andyh1203
