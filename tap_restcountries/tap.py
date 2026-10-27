@@ -15,7 +15,6 @@ else:
     from typing_extensions import override
 
 
-
 class TapRestCountries(Tap):
     """Singer tap for RestCountries."""
 

@@ -6,7 +6,6 @@ from singer_sdk.testing import get_tap_test_class
 
 from tap_restcountries.tap import TapRestCountries
 
-
 # Run standard built-in tap tests from the SDK:
 TestTapRestCountries = get_tap_test_class(
     tap_class=TapRestCountries,

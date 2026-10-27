@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import decimal
 import sys
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 
-from singer_sdk.helpers.jsonpath import extract_jsonpath
-from singer_sdk.pagination import SinglePagePaginator
 from singer_sdk.streams import RESTStream
 
 if sys.version_info >= (3, 12):
@@ -16,10 +13,10 @@ else:
     from typing_extensions import override
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
-
-    import requests
     from singer_sdk.helpers.types import Context
+
+
+MAX_FIELDS = 10
 
 
 class RestCountriesStream(RESTStream):
@@ -51,7 +48,8 @@ class RestCountriesStream(RESTStream):
 
         Returns:
             A dictionary of URL query parameters.
-        """ 
-        if len(self.config["fields"]) > 10:
-            raise ValueError("The API has a maximum of 10 fields per request.")
+        """
+        if len(self.config["fields"]) > MAX_FIELDS:
+            msg = f"The API has a maximum of {MAX_FIELDS} fields per request."
+            raise ValueError(msg)
         return {"fields": ",".join(self.config["fields"])}
