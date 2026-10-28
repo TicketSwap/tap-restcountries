@@ -22,10 +22,16 @@ class TapRestCountries(Tap):
 
     config_jsonschema = th.PropertiesList(
         th.Property(
+            "api_key",
+            th.StringType,
+            required=True,
+            secret=True,
+            description="REST Countries API key.",
+        ),
+        th.Property(
             "fields",
             th.ArrayType(th.StringType),
-            required=True,
-            description="List of fields to include in the API response (max 10).",
+            description="v3.1 field names to emit, e.g. cca3, name, latlng. Emits all when unset.",
         ),
     ).to_dict()
 

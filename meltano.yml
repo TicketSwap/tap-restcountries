@@ -17,6 +17,13 @@ plugins:
     - stream-maps
     - structured-logging
 
+    settings:
+    - name: api_key
+      kind: string
+      sensitive: true
+    - name: fields
+      kind: array
+
     select:
     - countries.*
 

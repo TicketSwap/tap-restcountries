@@ -2,9 +2,20 @@
 
 from __future__ import annotations
 
+import sys
+from typing import TYPE_CHECKING, Any
+
 from singer_sdk import typing as th  # JSON Schema typing helpers
 
 from tap_restcountries.client import RestCountriesStream
+
+if sys.version_info >= (3, 12):
+    from typing import override
+else:
+    from typing_extensions import override
+
+if TYPE_CHECKING:
+    from singer_sdk.helpers.types import Context
 
 # Translation entry schema (official + common name in a language)
 _translation_schema = th.ObjectType(
@@ -14,10 +25,10 @@ _translation_schema = th.ObjectType(
 
 
 class CountriesStream(RestCountriesStream):
-    """Stream of all countries from the REST Countries v3.1 API."""
+    """Stream of all countries from the REST Countries v5 API, in the v3.1 record shape."""
 
     name = "countries"
-    path = "/all"
+    path = ""
     primary_keys = ("cca3",)
     replication_key = None
 
@@ -195,14 +206,6 @@ class CountriesStream(RestCountriesStream):
             description="Currencies keyed by currency code",
         ),
         th.Property(
-            "idd",
-            th.ObjectType(
-                th.Property("root", th.StringType),
-                th.Property("suffixes", th.ArrayType(th.StringType)),
-            ),
-            description="International dialing codes",
-        ),
-        th.Property(
             "tld",
             th.ArrayType(th.StringType),
             description="Internet top-level domains",
@@ -251,12 +254,81 @@ class CountriesStream(RestCountriesStream):
             ),
             description="Links to flag images (png and svg)",
         ),
-        th.Property(
-            "coatOfArms",
-            th.ObjectType(
-                th.Property("png", th.StringType),
-                th.Property("svg", th.StringType),
-            ),
-            description="Links to coat of arms images",
-        ),
     ).to_dict()
+
+    @override
+    def post_process(
+        self,
+        row: dict[str, Any],
+        context: Context | None = None,
+    ) -> dict[str, Any]:
+        """Map a v5 country object onto the v3.1 schema and keep the configured fields.
+
+        Args:
+            row: A v5 country object.
+            context: The stream context.
+
+        Returns:
+            The v3.1 record, limited to the configured fields if any.
+        """
+        names = row["names"]
+        codes = row["codes"]
+        classification = row["classification"]
+        capitals = row["capitals"]
+        links = row["links"]
+        flag = row["flag"]
+        record = {
+            "cca2": codes["alpha_2"],
+            "cca3": codes["alpha_3"],
+            "ccn3": codes["ccn3"],
+            "cioc": codes["cioc"],
+            "fifa": codes["fifa"],
+            "independent": classification["sovereign"],
+            "status": classification["iso_status"],
+            "unMember": classification["un_member"],
+            "name": {
+                "common": names["common"],
+                "official": names["official"],
+                "nativeName": names["native"],
+            },
+            "altSpellings": names["alternates"],
+            "translations": names["translations"],
+            "area": row["area"]["kilometers"],
+            "borders": row["borders"],
+            "capital": [capital["name"] for capital in capitals],
+            "capitalInfo": {"latlng": _latlng(capitals[0]["coordinates"])} if capitals else {},
+            "continents": row["continents"],
+            "landlocked": row["landlocked"],
+            "latlng": _latlng(row["coordinates"]),
+            "maps": {
+                "googleMaps": links["google_maps"],
+                "openStreetMaps": links["open_street_maps"],
+            },
+            "region": row["region"],
+            "subregion": row["subregion"],
+            "timezones": row["timezones"],
+            "population": row["population"],
+            "languages": {language["iso639_3"]: language["name"] for language in row["languages"]},
+            "demonyms": row["demonyms"],
+            "currencies": {
+                currency["code"]: {"name": currency["name"], "symbol": currency["symbol"]}
+                for currency in row["currencies"]
+            },
+            "tld": row["tlds"],
+            "postalCode": row["postal_code"],
+            "startOfWeek": row["date"]["start_of_week"],
+            "car": {"signs": row["cars"]["signs"], "side": row["cars"]["driving_side"]},
+            "gini": row["economy"]["gini_coefficient"],
+            "flag": flag["emoji"],
+            "flags": {
+                "png": flag["url_png"],
+                "svg": flag["url_svg"],
+                "alt": flag["description"],
+            },
+        }
+        fields = self.config.get("fields")
+        return record if fields is None else {field: record[field] for field in fields}
+
+
+def _latlng(coordinates: dict[str, float]) -> list[float]:
+    return [float(coordinates["lat"]), float(coordinates["lng"])]

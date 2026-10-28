@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from typing import TYPE_CHECKING, Any
 
+from singer_sdk.authenticators import BearerTokenAuthenticator
+from singer_sdk.pagination import BaseOffsetPaginator
 from singer_sdk.streams import RESTStream
 
 if sys.version_info >= (3, 12):
@@ -13,26 +15,53 @@ else:
     from typing_extensions import override
 
 if TYPE_CHECKING:
+    import requests
     from singer_sdk.helpers.types import Context
 
 
-MAX_FIELDS = 10
+PAGE_SIZE = 100
+
+
+class RestCountriesPaginator(BaseOffsetPaginator):
+    """Offset paginator that stops when the response reports no more records."""
+
+    @override
+    def has_more(self, response: requests.Response) -> bool:
+        """Return whether the API reports records past this page.
+
+        Args:
+            response: API response object.
+
+        Returns:
+            True if another page is available.
+        """
+        return response.json()["data"]["meta"].get("more", False)
 
 
 class RestCountriesStream(RESTStream):
     """RestCountries stream class."""
 
-    # The API returns a top-level JSON array.
-    records_jsonpath = "$[*]"
+    url_base = "https://api.restcountries.com/countries/v5"
+    records_jsonpath = "$.data.objects[*]"
 
     @property
-    def url_base(self) -> str:
-        """Return the API URL root, configurable via tap settings.
+    @override
+    def authenticator(self) -> BearerTokenAuthenticator:
+        """Return a bearer token authenticator for the configured API key.
 
         Returns:
-            The base URL for the REST Countries API.
+            An authenticator instance.
         """
-        return "https://restcountries.com/v3.1"
+        return BearerTokenAuthenticator(token=self.config["api_key"])
+
+    @override
+    def get_new_paginator(self) -> RestCountriesPaginator:
+        """Return a paginator that walks the list endpoint by offset.
+
+        Returns:
+            A paginator instance.
+        """
+        return RestCountriesPaginator(start_value=0, page_size=PAGE_SIZE)
 
     @override
     def get_url_params(
@@ -44,12 +73,9 @@ class RestCountriesStream(RESTStream):
 
         Args:
             context: The stream context.
-            next_page_token: The next page index or value.
+            next_page_token: The offset of the next page.
 
         Returns:
             A dictionary of URL query parameters.
         """
-        if len(self.config["fields"]) > MAX_FIELDS:
-            msg = f"The API has a maximum of {MAX_FIELDS} fields per request."
-            raise ValueError(msg)
-        return {"fields": ",".join(self.config["fields"])}
+        return {"limit": PAGE_SIZE, "offset": next_page_token}
