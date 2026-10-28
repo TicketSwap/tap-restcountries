@@ -60,7 +60,7 @@ jobs:
     - name: Run Tox
       env:
         PYTHON_VERSION: ${{ matrix.python-version }}
-        TAP_RESTCOUNTRIES_FIELDS: cca3,name,cca2,latlng,population
+        TAP_RESTCOUNTRIES_API_KEY: ${{ secrets.TAP_RESTCOUNTRIES_API_KEY }}
       run: uvx --with=tox-uv tox -e "$PYTHON_VERSION"
 
   test:

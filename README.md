@@ -1,6 +1,7 @@
 # tap-restcountries
 
-`tap-restcountries` is a Singer tap for the [REST Countries](https://restcountries.com/) API (v3.1).
+`tap-restcountries` is a Singer tap for the [REST Countries](https://restcountries.com/) API. It reads the v5
+countries list and emits records in the v3.1 shape, so existing loads keep their columns.
 
 Built with the [Meltano Tap SDK](https://sdk.meltano.com) for Singer Taps.
 
@@ -9,14 +10,14 @@ Built with the [Meltano Tap SDK](https://sdk.meltano.com) for Singer Taps.
 Install from GitHub:
 
 ```bash
-uv tool install git+https://github.com/ORG_NAME/tap-restcountries.git@main
+uv tool install git+https://github.com/TicketSwap/tap-restcountries.git@main
 ```
 
 ## Streams
 
 | Stream | Endpoint | Primary Key | Replication |
 |-----------|----------|-------------|-------------|
-| countries | `/all` | `cca3` | Full table |
+| countries | `/countries/v5` (100 per page) | `cca3` | Full table |
 
 ## Configuration
 
@@ -24,29 +25,18 @@ uv tool install git+https://github.com/ORG_NAME/tap-restcountries.git@main
 
 | Setting | Type | Required | Default | Description |
 |---------|------|----------|---------|-------------|
-| `api_url` | string | No | `https://restcountries.com/v3.1` | Base URL for the REST Countries API |
-| `fields` | array | No | (all) | List of fields to request — see [Fields](#fields) below |
+| `api_key` | string | Yes | | REST Countries API key |
+| `fields` | array | No | (all) | v3.1 field names to emit, see [Fields](#fields) |
 
 ### Fields
 
-> **⚠️ Important:** The REST Countries API enforces a **maximum of 10 fields** when
-> calling the `/all` endpoint. If you need more fields, omit the `fields` setting
-> entirely to retrieve the full response, or make multiple requests with different
-> field selections.
+`cca2`, `cca3`, `ccn3`, `cioc`, `fifa`, `independent`, `status`, `unMember`, `name`, `altSpellings`,
+`translations`, `area`, `borders`, `capital`, `capitalInfo`, `continents`, `landlocked`, `latlng`, `maps`,
+`region`, `subregion`, `timezones`, `population`, `languages`, `demonyms`, `currencies`, `tld`, `postalCode`,
+`startOfWeek`, `car`, `gini`, `flag`, `flags`.
 
-Available fields: `cca2`, `cca3`, `ccn3`, `cioc`, `fifa`, `independent`, `status`,
-`unMember`, `name`, `altSpellings`, `translations`, `area`, `borders`, `capital`,
-`capitalInfo`, `continents`, `landlocked`, `latlng`, `maps`, `region`, `subregion`,
-`timezones`, `population`, `languages`, `demonyms`, `currencies`, `idd`, `tld`,
-`postalCode`, `startOfWeek`, `car`, `gini`, `flag`, `flags`, `coatOfArms`.
-
-Example configuration selecting specific fields:
-
-```json
-{
-  "fields": ["name", "cca2", "cca3", "capital", "region", "population"]
-}
-```
+v5 has no equivalent for the v3.1 `idd` and `coatOfArms` fields, and `status` carries the v5 values
+(`official`, `user_assigned`).
 
 ### Configure using environment variables
 
@@ -55,13 +45,15 @@ This Singer tap will automatically import any environment variables within the w
 environment variable is set either in the terminal context or in the `.env` file.
 
 ```bash
-export TAP_RESTCOUNTRIES_API_URL=https://restcountries.com/v3.1
+export TAP_RESTCOUNTRIES_API_KEY=your_api_key
 export TAP_RESTCOUNTRIES_FIELDS='["name","cca2","capital"]'
 ```
 
 ### Source Authentication and Authorization
 
-No authentication is required. The REST Countries API is free and open.
+Every request needs an API key from [restcountries.com](https://restcountries.com/sign-up), sent as a bearer
+token. The free plan allows 1,000 requests a month; a full sync takes 3. The demo key `rc_live_demo` returns
+one sample country and no quota.
 
 ## Usage
 
@@ -96,7 +88,7 @@ Create tests within the `tests` subfolder and
 then run:
 
 ```bash
-uv run pytest
+TAP_RESTCOUNTRIES_API_KEY=your_api_key uv run pytest
 ```
 
 You can also test the `tap-restcountries` CLI interface directly using `uv run`:
