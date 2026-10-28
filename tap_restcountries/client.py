@@ -6,7 +6,7 @@ import sys
 from typing import TYPE_CHECKING, Any
 
 from singer_sdk.authenticators import BearerTokenAuthenticator
-from singer_sdk.pagination import BaseOffsetPaginator
+from singer_sdk.pagination import OffsetPaginator
 from singer_sdk.streams import RESTStream
 
 if sys.version_info >= (3, 12):
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 PAGE_SIZE = 100
 
 
-class RestCountriesPaginator(BaseOffsetPaginator):
+class RestCountriesPaginator(OffsetPaginator):
     """Offset paginator that stops when the response reports no more records."""
 
     @override
